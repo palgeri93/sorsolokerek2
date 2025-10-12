@@ -178,23 +178,33 @@ with st.sidebar:
     st.header("Névszelekció")
     st.caption("Vedd ki a pipát annál, akit **ne** tegyünk a kerékbe.")
 
-    # Gyors gombok: összes be / ki
+    # Gyors gombok: összes be / ki (FONTOS: a widgetek állapotát is frissítjük)
     bcol1, bcol2 = st.columns(2)
     with bcol1:
         if st.button("Összes be"):
             st.session_state["selected_names_by_sheet"][chosen] = set(names_all)
+            for name in names_all:
+                key = f"chk_{chosen}_{uuid.uuid5(uuid.NAMESPACE_DNS, name)}"
+                st.session_state[key] = True
     with bcol2:
         if st.button("Összes ki"):
             st.session_state["selected_names_by_sheet"][chosen] = set()
+            for name in names_all:
+                key = f"chk_{chosen}_{uuid.uuid5(uuid.NAMESPACE_DNS, name)}"
+                st.session_state[key] = False
 
-    # Egyedi checkboxok
-    new_selected: set[str] = set()
-    for i, name in enumerate(names_all):
+    # Egyedi checkboxok – a kezdeti értéket explicit a session_state-ben állítjuk be,
+    # mert a Streamlit a `value=` paramétert csak az első létrehozáskor használja.
+    for name in names_all:
         key = f"chk_{chosen}_{uuid.uuid5(uuid.NAMESPACE_DNS, name)}"
-        checked_default = name in st.session_state["selected_names_by_sheet"][chosen]
-        checked = st.checkbox(name, value=checked_default, key=key)
-        if checked:
-            new_selected.add(name)
+        if key not in st.session_state:
+            st.session_state[key] = name in st.session_state["selected_names_by_sheet"][chosen]
+        st.checkbox(name, key=key)
+
+    # A kiválasztás beolvasása a checkboxok tényleges állapotából
+    new_selected: set[str] = set(n for n in names_all
+                                 for k in [f"chk_{chosen}_{uuid.uuid5(uuid.NAMESPACE_DNS, n)}"]
+                                 if st.session_state.get(k, False))
     # Frissítsük az állapotot a sheet-re
     st.session_state["selected_names_by_sheet"][chosen] = new_selected
 
